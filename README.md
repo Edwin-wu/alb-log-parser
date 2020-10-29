@@ -34,8 +34,8 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
  
 ### 创建解析日志的 Lambda 函数并配置 S3 事件触发 Lambda
 在上面的架构设计中，Lambda 必须要能够读取 S3 上的日志文件，并且写入 AES 。因此，它需要 S3 的只读权限以及写入 AES 的权限。由于 AES 内部的 Index 的读写权限是由 Elasticsearch 自己控制的（类似于RDS 数据库的表，并不是创建RDS的人就能有权限读写RDS 里面的表。这个是数据平面和控制平面分离的原则，从而实现安全控制），因此，AES 写入的权限是在 AES 服务中配置的，此处我们只要在 IAM 中给 Lambda对 S3 存储桶的只读权限。
-为了简化篇幅起见，创建 IAM 角色的过程本文以命令行方式提供，实际过程也可以用图形化界面实现。安装和配置 AWS CLI的过程请参考官方文档的链接。
-安装配置好 AWS CLI以后，请在此链接下载 bash 脚本，打开脚本修改其中的LOG_BUCKET_NAME和ES_DOMAIN_NAME的值为上文您采集 ALB 日志的存储桶名称，以及您已经建好的 AES集群名称。比如：
+为了简化篇幅起见，配置过程本文以命令行方式提供，实际过程也可以用图形化界面实现。安装和配置 AWS CLI的过程请参考[官方文档的链接](https://docs.aws.amazon.com/zh_cn/cli/latest/userguide/install-cliv1.html)。
+安装配置好 AWS CLI以后，请在此[链接](https://github.com/Edwin-wu/alb-log-parser/blob/master/alb-log-to-es-sample.sh)下载 bash 脚本，打开脚本修改其中的LOG_BUCKET_NAME和ES_DOMAIN_NAME的值为上文您采集 ALB 日志的存储桶名称，以及您已经建好的 AES集群名称。比如：
 ```bash
 #!/bin/bash
 

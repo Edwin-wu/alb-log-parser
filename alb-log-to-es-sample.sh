@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #运行前请先修改LOG_BUCKET_NAME和ES_DOMAIN_NAME的值，以便脚本正确识别存储桶和 AES 集群
-LOG_BUCKET_NAME=alb-log-demo
-ES_DOMAIN_NAME=test-domain
+LOG_BUCKET_NAME=example-bucket
+ES_DOMAIN_NAME=example-domain
 
 
 ES_ENDPOINT=$(aws es describe-elasticsearch-domain --domain-name $ES_DOMAIN_NAME --query "DomainStatus.Endpoint" --output text)
@@ -43,12 +43,13 @@ echo -n "{
           }
     ]
 }">>alb-log-s3-reader.json
-wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/lambda-trustpolicy.json
+wget https://edwin-blog.s3.cn-northwest-1.amazonaws.com.cn/lambda-trustpolicy.json
 echo "正在为Lambda创建 IAM角色....."
 if aws iam create-role --role-name alb-log-s3-reader --assume-role-policy-document file://lambda-trustpolicy.json ; then
     if aws iam put-role-policy --role-name alb-log-s3-reader --policy-name alb-log-s3-reader --policy-document file://alb-log-s3-reader.json ; then
         role_arn=$(aws iam get-role --role-name alb-log-s3-reader --query "Role.Arn" --output text)
         echo " Lambda角色创建完毕，已成功关联 S3 权限。"
+        rm alb-log-s3-reader.json lambda-trustpolicy.json
     else
         echo "Lambda角色创建完毕，但是关联 S3 权限失败。"
         rm alb-log-s3-reader.json lambda-trustpolicy.json
@@ -60,7 +61,7 @@ else
     exit 1
 fi
 echo "开始创建 Lambda 函数......"
-wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/ALB-log-processor.zip
+wget https://edwin-blog.s3.cn-northwest-1.amazonaws.com.cn/ALB-log-parsing.zip
 if aws lambda create-function \
         --function-name ALB-log-parsing \
         --runtime python3.7 \
@@ -72,7 +73,7 @@ if aws lambda create-function \
     lambda_arn=$(aws lambda get-function --function-name  ALB-log-parsing --query "Configuration.FunctionArn" --output text)
     echo " Lambda 创建完毕，正在为您 配置 S3 事件触发Lambda....."
 else
-    echo "创建 Lambda 函数失败，请检查是否已有重名的 Lambda或者您是否有权限创建Lambda 函数"
+    echo "创建 Lambda 函数失败，请检查LOG_BUCKET_NAME以及ES_DOMAIN_NAME是否已经配置正确，是否已有重名的 Lambda或者您是否有权限创建Lambda 函数"
     rm ALB-log-parsing.zip
     exit 1
 fi

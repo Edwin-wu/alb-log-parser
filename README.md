@@ -10,7 +10,7 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 方案概述
 -------
 我们知道 ALB 的日志可以接近实时地存放到 S3 存储桶上，而 S3 上新增文件是一个事件，那么可以考虑基于事件触发Lambda 的机制，将生成的日志文件读取并且解析，然后写入 AES 的 index。因此我们可以考虑采用如下图的架构：  
-<div align=center><img width="600" height="300" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png"/></div>
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png"/></div>
 
 以下是关于本文的一些说明和注意事项：
 *	Elastic Load Balancing 每 5 分钟为每个负载均衡器节点（每个负载均衡器可能有多个节点）发布一次日志文件。日志传输最终是一致的。负载均衡器可能会在相同时间段产生多个日志，一般是因为这个站点具有高流量。

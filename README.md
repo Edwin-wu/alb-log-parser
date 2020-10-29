@@ -3,6 +3,7 @@
 综述
 -------
 Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elasticsearch 服务，常用于日志分析处理的场景。AES 服务原生支持了跨可用区的高可用、在线版本升级、在线扩容、自动快照备份等功能。AES 还能与 CloudWatch logs、Kinesis Firehose以及 AWS IOT 服务直接集成获取数据，通过 Cloudwatch logs可以将RDS 数据库、Lambda、EMR 等服务日志、CloudTrial 审计日志、CDN 日志、WAF 日志、VPC flow log 流量日志等发送到 AES。结合Cloudwatch agent、Kinesis agent 以及诸如 Filebeat、Logstash 等工具还可以实现将应用程序日志、OS系统日志也发送到 AWS进行综合可视化的展现。并且AES服务能够与 Amazon SNS 服务（SNS 可以对接到短信、邮件、微信、钉钉、电话等）、Amazon Chime 即时通讯服务、Slack平台等集成做告警。因此，除了使用 Cloudwatch 进行监控以外，在 AWS 上非常流行的方式是用 AES 服务构建一个安全信息和事件管理 (SIEM) 系统。
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png"/></div>  
  
 在 AWS 上运行 HTTP/HTTPS服务的时候用户一般都会选用Application Load Balancer（以下简称 ALB），它能够自动扩展和收缩，与 AWS Shield集成抵挡 DDoS 攻击。ALB会生成与 Nginx 日志格式兼容的日志，但是目前只能保存到 S3，还不能直接与 ElasticSearch 集成。如果您有需要将 ALB 的日志发送到 AES 中做日志分析和告警，本文将提供无服务器化的方案将ALB 的日志数据近实时地传输到 AES 用于分析和展现。
 
@@ -10,7 +11,7 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 方案概述
 -------
 我们知道 ALB 的日志可以接近实时地存放到 S3 存储桶上，而 S3 上新增文件是一个事件，那么可以考虑基于事件触发Lambda 的机制，将生成的日志文件读取并且解析，然后写入 AES 的 index。因此我们可以考虑采用如下图的架构：  
-<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png"/></div>
+<div align=center><img width="600" height="150" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/architecture.png"/></div>  
 
 以下是关于本文的一些说明和注意事项：
 *	Elastic Load Balancing 每 5 分钟为每个负载均衡器节点（每个负载均衡器可能有多个节点）发布一次日志文件。日志传输最终是一致的。负载均衡器可能会在相同时间段产生多个日志，一般是因为这个站点具有高流量。
@@ -24,8 +25,8 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 -------
 ### 配置 ALB 将日志存储到 S3 存储桶
 在 EC2 console 中找到您希望激活日志的ALB，选中后可以在页面最下方找到相应的配置选项。在这个配置界面，我们可以启用 ALB 的访问日志，并且在 S3 位置中输入一个存储桶名称(例如我这里叫 alb-logs-zhy)，勾选“为我创建此位置”，这样系统会自动为您创建该名称的存储桶。点击保存即可。
- 
- 
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png"/></div>  
+
 
 过几分钟之后我们可以在对应的 S3 存储桶中可以看到对应年月日的 ALB 日志文件，下面是用aws s3 ls命令行查看 S3 日志存储桶中日志文件的截图：
  

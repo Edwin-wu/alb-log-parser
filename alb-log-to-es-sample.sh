@@ -60,7 +60,7 @@ else
     exit 1
 fi
 echo "开始创建 Lambda 函数......"
-wget https://edwin-blog.s3.cn-northwest-1.amazonaws.com.cn/ALB-log-parsing.zip
+wget https://github.com/Edwin-wu/alb-log-parser/raw/master/ALB-log-processor.zip
 if aws lambda create-function \
         --function-name ALB-log-parsing \
         --runtime python3.7 \

@@ -25,10 +25,12 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 -------
 ### 配置 ALB 将日志存储到 S3 存储桶
 在 EC2 console 中找到您希望激活日志的ALB，选中后可以在页面最下方找到相应的配置选项。在这个配置界面，我们可以启用 ALB 的访问日志，并且在 S3 位置中输入一个存储桶名称(例如我这里叫 alb-logs-zhy)，勾选“为我创建此位置”，这样系统会自动为您创建该名称的存储桶。点击保存即可。
-<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png"/></div>  
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/ELB_setting.png"/></div>  
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/ELB_setting2.png"/></div>  
 
 
 过几分钟之后我们可以在对应的 S3 存储桶中可以看到对应年月日的 ALB 日志文件，下面是用aws s3 ls命令行查看 S3 日志存储桶中日志文件的截图：
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/S3_file.png"/></div> 
  
 ### 创建解析日志的 Lambda 函数并配置 S3 事件触发 Lambda
 在上面的架构设计中，Lambda 必须要能够读取 S3 上的日志文件，并且写入 AES 。因此，它需要 S3 的只读权限以及写入 AES 的权限。由于 AES 内部的 Index 的读写权限是由 Elasticsearch 自己控制的（类似于RDS 数据库的表，并不是创建RDS的人就能有权限读写RDS 里面的表。这个是数据平面和控制平面分离的原则，从而实现安全控制），因此，AES 写入的权限是在 AES 服务中配置的，此处我们只要在 IAM 中给 Lambda对 S3 存储桶的只读权限。
@@ -48,12 +50,18 @@ bash alb-log-to-es-sample.sh
 ```
 ### 配置AES中的日志格式和字段属性
 接下来，我们需要登录到 Kibana 上用 Dev Tools设置alb-access-log 开头的 index 的字段类型，以便 AES 能够正确识别每个字段的类型。请在此链接下载Dev Tools 的命令脚本，并把它黏贴到 Dev tools 里面，点击右上角的三角形符号执行该模板设定：
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/ES_Dev_tool.png"/></div> 
  
 如果以上所有设置都成功的话，那么我们可以在Kibana 中创建 ALB 的 Index patterns 了。在 Kibana 的左侧选中Management 图标，点击 Index Patterns，再点击右侧的Create index pattern，在文本框中输入“alb-access-log*”，之后点击 Next Step，并选中 request_creation_time 作为 Time Filter，最后点击Create index pattern保存。 
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/Create_index_pattern.png"/></div> 
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/Create_index_pattern2.png"/></div> 
  
 然后我们就可以在Kibana 的 Discovery 界面看到Lambda 发送过来的新产生的 ALB 日志了：
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/Create_discover_log.png"/></div> 
  
 最后，我们就可以在 Kibana中将ALB 的日志进行分析和图形化了，比如：
+<div align=center><img width="600" height="400" src="https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/ES_visualization.png"/></div> 
+
  
 如果您使用的是 AES 7.1以上的版本，建议可以考虑部署一个日志索引生命周期管理，比如保留 7 天的日志索引在热存储，自动转移 30 天以上的日志索引到ultrawarm温存储，超过 30 天的日志索引则可以自动删除。这样可以节省存储容量，避免 AES 的index shard被耗尽。具体操作方法可以参考：
 https://docs.aws.amazon.com/zh_cn/elasticsearch-service/latest/developerguide/ism.html
@@ -61,4 +69,4 @@ https://docs.aws.amazon.com/zh_cn/elasticsearch-service/latest/developerguide/is
 
 总结
 -------
-以上内容介绍了利用 Lambda自动解析 ALB 生成的日志并发送到 AES，生成可视化监控报表的整体解决方案
+以上内容介绍了利用 Lambda自动解析 ALB 生成的日志并发送到 Amazon ElasticSearch服务，生成可视化监控报表的整体解决方案。结合Amazon Firehose、CloudWatch logs、 AWS IOT服务等，可以将所有可采集的日志汇聚到AES 中进行集中分析和展现，构建统一的 SIEM 平台。AES 内部还集成了随机森林算法可以支持异常检测，从而实现基于机器学习的 AI Ops的运维理念。

@@ -49,7 +49,7 @@ ES_DOMAIN_NAME=example-domain
 bash alb-log-to-es-sample.sh
 ```
 ### 配置AES中的日志格式和字段属性
-接下来，我们需要登录到 Kibana 上用 Dev Tools设置alb-access-log 开头的 index 的字段类型，以便 AES 能够正确识别每个字段的类型。请在此链接下载Dev Tools 的命令脚本，并把它黏贴到 Dev tools 里面，点击右上角的三角形符号执行该模板设定：
+接下来，我们需要登录到 Kibana 上用 Dev Tools设置alb-access-log 开头的 index 的字段类型，以便 AES 能够正确识别每个字段的类型。请在此[链接](https://github.com/Edwin-wu/alb-log-parser/blob/master/alb-access-logs-template.txt)下载Dev Tools 的命令脚本，并把它黏贴到 Dev tools 里面，点击右上角的三角形符号执行该模板设定：
 ![](https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/ES_Dev_tool.png)
  
 如果以上所有设置都成功的话，那么我们可以在Kibana 中创建 ALB 的 Index patterns 了。在 Kibana 的左侧选中Management 图标，点击 Index Patterns，再点击右侧的Create index pattern，在文本框中输入“alb-access-log*”，之后点击 Next Step，并选中 request_creation_time 作为 Time Filter，最后点击Create index pattern保存。 

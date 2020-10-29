@@ -6,7 +6,7 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 在 AWS 上运行 HTTP/HTTPS服务的时候用户一般都会选用Application Load Balancer（以下简称 ALB），它能够自动扩展和收缩，与 AWS Shield集成抵挡 DDoS 攻击。ALB会生成与 Nginx 日志格式兼容的日志，但是目前只能保存到 S3，还不能直接与 ElasticSearch 集成。如果您有需要将 ALB 的日志发送到 AES 中做日志分析和告警，本文将提供无服务器化的方案将ALB 的日志数据近实时地传输到 AES 用于分析和展现。
 方案概述
 我们知道 ALB 的日志可以接近实时地存放到 S3 存储桶上，而 S3 上新增文件是一个事件，那么可以考虑基于事件触发Lambda 的机制，将生成的日志文件读取并且解析，然后写入 AES 的 index。因此我们可以考虑采用如下图的架构：
- 
+![image](https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/SIEM.png)
 以下是关于本文的一些说明和注意事项：
 	Elastic Load Balancing 每 5 分钟为每个负载均衡器节点（每个负载均衡器可能有多个节点）发布一次日志文件。日志传输最终是一致的。负载均衡器可能会在相同时间段产生多个日志，一般是因为这个站点具有高流量。
 	由于我们需要用 Lambda 读取 S3，并写入 AES，所以Lambda 必须能够同时访问 S3和 AES。我们有 2 种推荐的部署模式，一是 Lambda 和 AES 都不放进 VPC 里面，这样比较简单；二是 Lambda 和 AES都放进 VPC 里面，那么 Lambda所部署的子网需要有路由访问 S3（可以通过 NAT 或者 S3 endpoint，一般推荐 S3 endpoint）。在安全实践中，我们推荐第二种方式。本文为了避免纠缠过多网络配置等细节，以第一种方案来进行说明，如果您在实际生产环境部署，请合理规划并推荐使用第二种方式，Lambda代码并不会有变化。如果您同时使用了多个 region，并且希望将日志集中到某个 region 的AES，则目前只能将 lambda和 AES 均不放入 VPC（因为 AES 在 VPC模式不支持 VPC 外的访问）。

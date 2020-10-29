@@ -18,15 +18,18 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 *	本文以中国区为例子进行配置的，因此arn 是以arn:aws-cn开头的，如果是 AWS Global region 部署，则 arn 是以arn:aws开头的。如果您是基于海外区域部署，请注意修改相关的 arn。
 *	本文的 Lambda 示例代码中采用了geoip2的数据库来解析客户端请求的来源城市、国家和经纬度。geoip2有免费版和收费版的 2 种数据库。本文采用免费版的库，部分解析结果可能会不准确，如果您需要精确的结果，可以考虑替换Lambda 代码包中GeoLite2-City.mmdb文件为收费数据库。
 *	本文提供的自动配置lambda写入 AES 的bash 脚本需要安装jq命令。比如mac可以执行brew install jq，Amazon Linux可以执行sudo yum install yq，Ubuntu可以执行sudo apt-get install jq。
+
+
 方案实现
-配置 ALB 将日志存储到 S3 存储桶
+-------
+### 配置 ALB 将日志存储到 S3 存储桶
 在 EC2 console 中找到您希望激活日志的ALB，选中后可以在页面最下方找到相应的配置选项。在这个配置界面，我们可以启用 ALB 的访问日志，并且在 S3 位置中输入一个存储桶名称(例如我这里叫 alb-logs-zhy)，勾选“为我创建此位置”，这样系统会自动为您创建该名称的存储桶。点击保存即可。
  
  
 
 过几分钟之后我们可以在对应的 S3 存储桶中可以看到对应年月日的 ALB 日志文件，下面是用aws s3 ls命令行查看 S3 日志存储桶中日志文件的截图：
  
-创建解析日志的 Lambda 函数并配置 S3 事件触发 Lambda
+### 创建解析日志的 Lambda 函数并配置 S3 事件触发 Lambda
 在上面的架构设计中，Lambda 必须要能够读取 S3 上的日志文件，并且写入 AES 。因此，它需要 S3 的只读权限以及写入 AES 的权限。由于 AES 内部的 Index 的读写权限是由 Elasticsearch 自己控制的（类似于RDS 数据库的表，并不是创建RDS的人就能有权限读写RDS 里面的表。这个是数据平面和控制平面分离的原则，从而实现安全控制），因此，AES 写入的权限是在 AES 服务中配置的，此处我们只要在 IAM 中给 Lambda对 S3 存储桶的只读权限。
 为了简化篇幅起见，创建 IAM 角色的过程本文以命令行方式提供，实际过程也可以用图形化界面实现。安装和配置 AWS CLI的过程请参考官方文档的链接。
 安装配置好 AWS CLI以后，请在此链接下载 bash 脚本，打开脚本修改其中的LOG_BUCKET_NAME和ES_DOMAIN_NAME的值为上文您采集 ALB 日志的存储桶名称，以及您已经建好的 AES集群名称。比如：
@@ -42,7 +45,7 @@ ES_DOMAIN_NAME=example-domain
 ```bash
 bash alb-log-to-es-sample.sh
 ```
-配置AES中的日志格式和字段属性
+### 配置AES中的日志格式和字段属性
 接下来，我们需要登录到 Kibana 上用 Dev Tools设置alb-access-log 开头的 index 的字段类型，以便 AES 能够正确识别每个字段的类型。请在此链接下载Dev Tools 的命令脚本，并把它黏贴到 Dev tools 里面，点击右上角的三角形符号执行该模板设定：
  
 如果以上所有设置都成功的话，那么我们可以在Kibana 中创建 ALB 的 Index patterns 了。在 Kibana 的左侧选中Management 图标，点击 Index Patterns，再点击右侧的Create index pattern，在文本框中输入“alb-access-log*”，之后点击 Next Step，并选中 request_creation_time 作为 Time Filter，最后点击Create index pattern保存。 

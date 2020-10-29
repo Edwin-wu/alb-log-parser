@@ -35,7 +35,7 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 ### 创建解析日志的 Lambda 函数并配置 S3 事件触发 Lambda
 在上面的架构设计中，Lambda 必须要能够读取 S3 上的日志文件，并且写入 AES 。因此，它需要 S3 的只读权限以及写入 AES 的权限。由于 AES 内部的 Index 的读写权限是由 Elasticsearch 自己控制的（类似于RDS 数据库的表，并不是创建RDS的人就能有权限读写RDS 里面的表。这个是数据平面和控制平面分离的原则，从而实现安全控制），因此，AES 写入的权限是在 AES 服务中配置的，此处我们只要在 IAM 中给 Lambda对 S3 存储桶的只读权限。
 为了简化篇幅起见，配置过程本文以命令行方式提供，实际过程也可以用图形化界面实现。安装和配置 AWS CLI的过程请参考[官方文档的链接](https://docs.aws.amazon.com/zh_cn/cli/latest/userguide/install-cliv1.html)。
-安装配置好 AWS CLI以后，请在此[链接](https://github.com/Edwin-wu/alb-log-parser/blob/master/alb-log-to-es-sample.sh)下载 bash 脚本，打开脚本修改其中的LOG_BUCKET_NAME和ES_DOMAIN_NAME的值为上文您采集 ALB 日志的存储桶名称，以及您已经建好的 AES集群名称。比如：
+安装配置好 AWS CLI以后，请在此[链接](https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/alb-log-to-es-sample.sh)下载 bash 脚本，打开脚本修改其中的LOG_BUCKET_NAME和ES_DOMAIN_NAME的值为上文您采集 ALB 日志的存储桶名称，以及您已经建好的 AES集群名称。比如：
 ```bash
 #!/bin/bash
 
@@ -49,7 +49,7 @@ ES_DOMAIN_NAME=example-domain
 bash alb-log-to-es-sample.sh
 ```
 ### 配置AES中的日志格式和字段属性
-接下来，我们需要登录到 Kibana 上用 Dev Tools设置alb-access-log 开头的 index 的字段类型，以便 AES 能够正确识别每个字段的类型。请在此[链接](https://github.com/Edwin-wu/alb-log-parser/blob/master/alb-access-logs-template.txt)下载Dev Tools 的命令脚本，并把它黏贴到 Dev tools 里面，点击右上角的三角形符号执行该模板设定：
+接下来，我们需要登录到 Kibana 上用 Dev Tools设置alb-access-log 开头的 index 的字段类型，以便 AES 能够正确识别每个字段的类型。请在此[链接](https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/alb-access-logs-template.txt)下载Dev Tools 的命令脚本，并把它黏贴到 Dev tools 里面，点击右上角的三角形符号执行该模板设定：
 ![](https://github.com/Edwin-wu/alb-log-parser/blob/master/pictures/ES_Dev_tool.png)
  
 如果以上所有设置都成功的话，那么我们可以在Kibana 中创建 ALB 的 Index patterns 了。在 Kibana 的左侧选中Management 图标，点击 Index Patterns，再点击右侧的Create index pattern，在文本框中输入“alb-access-log*”，之后点击 Next Step，并选中 request_creation_time 作为 Time Filter，最后点击Create index pattern保存。 

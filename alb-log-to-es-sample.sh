@@ -43,7 +43,7 @@ echo -n "{
           }
     ]
 }">>alb-log-s3-reader.json
-wget https://edwin-blog.s3.cn-northwest-1.amazonaws.com.cn/lambda-trustpolicy.json
+wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/lambda-trustpolicy.json
 echo "正在为Lambda创建 IAM角色....."
 if aws iam create-role --role-name alb-log-s3-reader --assume-role-policy-document file://lambda-trustpolicy.json ; then
     if aws iam put-role-policy --role-name alb-log-s3-reader --policy-name alb-log-s3-reader --policy-document file://alb-log-s3-reader.json ; then
@@ -60,7 +60,7 @@ else
     exit 1
 fi
 echo "开始创建 Lambda 函数......"
-wget https://github.com/Edwin-wu/alb-log-parser/raw/master/ALB-log-processor.zip
+wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/ALB-log-processor.zip
 if aws lambda create-function \
         --function-name ALB-log-parsing \
         --runtime python3.7 \

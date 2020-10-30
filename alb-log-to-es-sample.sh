@@ -17,7 +17,7 @@ else
   rm -f /tmp/alb-log-s3-reader.json
 fi
 
-echo -n "{ 
+echo "{ 
     \"Version\": \"2012-10-17\", 
     \"Statement\": [ 
         { 
@@ -45,12 +45,23 @@ echo -n "{
           }
     ]
 }">>alb-log-s3-reader.json
-wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/lambda-trustpolicy.json -O lambda-trustpolicy.json
+
+echo "{ 
+    \"Version\": \"2012-10-17\", 
+    \"Statement\": [ 
+        { 
+            \"Effect\": \"Allow\", 
+            \"Principal\": {
+                \"Service\": \"lambda.amazonaws.com\"
+            },
+            \"Action\": \"sts:AssumeRole\"
+          }
+    ]
+}">>lambda-trustpolicy.json
 echo "正在为Lambda创建 IAM角色....."
 if aws iam create-role --role-name alb-log-s3-reader --assume-role-policy-document file://lambda-trustpolicy.json ; then
     if aws iam put-role-policy --role-name alb-log-s3-reader --policy-name alb-log-s3-reader --policy-document file://alb-log-s3-reader.json ; then
         role_arn=$(aws iam get-role --role-name alb-log-s3-reader --query "Role.Arn" --output text)
-        policy_arn=
         echo " Lambda角色创建完毕，已成功关联 S3 权限。"
         rm alb-log-s3-reader.json lambda-trustpolicy.json
     else
@@ -73,7 +84,7 @@ echo "开始上传 Lambda 代码并创建函数......"
 if aws lambda create-function \
         --function-name ALB-log-parsing \
         --runtime python3.7 \
-        --zip-file fileb://ALB-log-parsing.zip \
+        --zip-file fileb://ALB-log-processor.zip \
         --handler log_parser.lambda_handler \
         --role $role_arn \
         --timeout 600 \
@@ -89,7 +100,7 @@ else
 fi
 
 #配置 S3 存储桶自动触发 lambda
-echo -n "{
+echo "{
     \"LambdaFunctionConfigurations\": [
         {
             \"LambdaFunctionArn\": \"${lambda_arn}\",
@@ -113,25 +124,29 @@ else
     rm notification.json ALB-log-parsing.zip
     exit 1
 fi
+rm notification.json ALB-log-processor.zip
 
 #配置 ElasticSearch 服务以添加 Lambda role 的权限
 aws es describe-elasticsearch-domain --domain-name $ES_DOMAIN_NAME --query "DomainStatus.AccessPolicies" --output text >>old_policy.json
 if jq .Statement[0].Principal.AWS[0] old_policy.json >/dev/null 2>&1; then
     new_principal=$(jq .Statement[0].Principal.AWS+[\"$role_arn\"] old_policy.json)
+    new_policy=$(jq .Statement[0].Principal.AWS="$new_principal" old_policy.json --compact-output)
+elif jq .Statement[0].Condition.IpAddress old_policy.json >/dev/null 2>&1; then
+    additional_principal="{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"$role_arn\"},\"Action\":\"es:*\",\"Resource\":$(jq .Statement[0].Resource old_policy.json)}"
+    new_principal=$(jq .Statement+[$additional_principal] old_policy.json)
+    new_policy=$(jq .Statement="$new_principal" old_policy.json --compact-output)
+    echo $new_policy
 else
     new_principal=$(jq [.Statement[0].Principal.AWS]+[\"$role_arn\"] old_policy.json)
+    new_policy=$(jq .Statement[0].Principal.AWS="$new_principal" old_policy.json --compact-output)
 fi
-new_policy=$(jq .Statement[0].Principal.AWS="$new_principal" old_policy.json --compact-output)
 if aws es update-elasticsearch-domain-config --domain-name $ES_DOMAIN_NAME --access-policies $new_policy; then
     echo "已经完成更新 ElasticSearch 的权限设置，请继续登录ElasticSearch设置"
     rm old_policy.json
 else
     echo "更新 ElasticSearch 权限设置失败，请检查 ElasticSearch 是否开启了精细化权限控制，或者 ElasticSearch是否处于 VPC 中"
-    rm old_policy.json
-    rm notification.json ALB-log-parsing.zip 
     exit 1
 fi
-rm notification.json ALB-log-parsing.zip
 
 
 

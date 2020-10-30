@@ -16,7 +16,7 @@ Amazon Elasticsearch Service（以下简称 AES 服务）是 AWS 托管的 Elast
 以下是关于本文的一些说明和注意事项：
 *	Elastic Load Balancing 每 5 分钟为每个负载均衡器节点（每个负载均衡器可能有多个节点）发布一次日志文件。日志传输最终是一致的。负载均衡器可能会在相同时间段产生多个日志，一般是因为这个站点具有高流量。
 *	由于我们需要用 Lambda 读取 S3，并写入 AES，所以Lambda 必须能够同时访问 S3和 AES。我们有 2 种推荐的部署模式，一是 Lambda 和 AES 都不放进 VPC 里面，这样比较简单；二是 Lambda 和 AES都放进 VPC 里面，那么 Lambda所部署的子网需要有路由访问 S3（可以通过 NAT 或者 S3 endpoint，一般推荐 S3 endpoint）。在安全实践中，我们推荐第二种方式。本文为了避免纠缠过多网络配置等细节，以第一种方案来进行说明，如果您在实际生产环境部署，请合理规划并推荐使用第二种方式，Lambda代码并不会有变化。如果您同时使用了多个 region，并且希望将日志集中到某个 region 的AES，则目前只能将 lambda和 AES 均不放入 VPC（因为 AES 在 VPC模式不支持 VPC 外的访问）。
-*	本文以中国区为例子进行配置的，因此arn 是以arn:aws-cn开头的，如果是 AWS Global region 部署，则 arn 是以arn:aws开头的。如果您是基于海外区域部署，请注意修改相关的 arn。
+*	本文以中国区为例子进行配置的，因此arn 是以arn:aws-cn开头的，如果是 AWS Global region 部署，则 arn 是以arn:aws开头的。如果您是基于海外区域部署，请注意修改相关的 arn 以及region名称。
 *	本文的 Lambda 示例代码中采用了geoip2的数据库来解析客户端请求的来源城市、国家和经纬度。geoip2有免费版和收费版的 2 种数据库。本文采用免费版的库，部分解析结果可能会不准确，如果您需要精确的结果，可以考虑替换Lambda 代码包中GeoLite2-City.mmdb文件为收费数据库。
 *	本文提供的自动配置lambda写入 AES 的bash 脚本需要安装jq命令。比如mac可以执行brew install jq，Amazon Linux可以执行sudo yum install yq，Ubuntu可以执行sudo apt-get install jq。
 

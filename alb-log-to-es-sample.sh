@@ -79,7 +79,11 @@ fi
 
 #创建 Lambda 函数
 echo "开始下载 Lambda 代码......"
-wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/ALB-log-processor.zip -O ALB-log-processor.zip
+while ! wget https://raw.githubusercontent.com/Edwin-wu/alb-log-parser/master/ALB-log-processor.zip -O ALB-log-processor.zip
+do
+    echo "无法连接 Github下载 Lambda 代码包，正在重试......"
+    sleep 5
+done
 echo "开始上传 Lambda 代码并创建函数......"
 if aws lambda create-function \
         --function-name ALB-log-parsing \
@@ -95,7 +99,7 @@ else
     echo "创建 Lambda 函数失败，请检查是否已有重名的 Lambda或者您是否有权限创建Lambda 函数"
     aws iam delete-role-policy --role-name alb-log-s3-reader --policy-name alb-log-s3-reader
     aws iam delete-role --role-name alb-log-s3-reader
-    rm ALB-log-parsing.zip
+    rm ALB-log-processor.zip
     exit 1
 fi
 
